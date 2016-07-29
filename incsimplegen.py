@@ -747,16 +747,19 @@ def main():
         gen_all_queries(exp_list)
         print 'Generating environments'
         gen_all_env_files(exp_list)
-    elif args.run:
+        exit(0)
+    if args.run:
         print 'Running experiments'
         run_experiments(exp_list)
-    elif args.summarize:
+        exit(0)
+    if args.summarize:
         print 'Summarizing results'
         summarize_all()
-    elif args.confinterval:
+    if args.confinterval:
+        print 'Calculating confidence intervals'
         confidence_interval_all()
-    else:
-        get_arguments(True)
+        exit(0)
+    get_arguments(True)
 
 
 if __name__ == '__main__':
