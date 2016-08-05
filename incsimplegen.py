@@ -17,6 +17,7 @@ INS = 'ins'
 RUL = 'rul'
 LEV = 'lev'
 IND = 'ind'
+TOPK = 'topk'
 ALGORITHM = 'algorithm'
 
 # Result fields
@@ -50,6 +51,10 @@ DELETION_DEFAULT = 50
 INSERTION_LIST = [50, 100, 200, 400]
 # Default insertions
 INSERTION_DEFAULT = 50
+# Top-k variation (-1 for best operator)
+TOPK_LIST = [-1, 125, 250, 500, 1000]
+# Default top-k
+TOPK_DEFAULT = -1
 
 # Default iteration number
 ITERATION_DEFAULT = 100
@@ -78,7 +83,7 @@ RUN_COUNT = 5
 RULE_STRING = 'IF A1 = {c1} AND A2 = {c2} THEN A3 = {b} BETTER A3 = {w} {i}'
 
 # Query
-QUERY = '''SELECT * FROM r
+QUERY = '''SELECT {t} * FROM r
 ACCORDING TO PREFERENCES
 {p};'''
 
@@ -176,9 +181,13 @@ def get_query_id(exp_conf):
     '''
     Return a query ID for given parameters
     '''
+    operation = 'best'
+    if exp_conf[TOPK] != -1:
+        operation = TOPK + str(exp_conf[TOPK])
     return RUL + str(exp_conf[RUL]) + \
         LEV + str(exp_conf[LEV]) + \
-        IND + str(exp_conf[IND])
+        IND + str(exp_conf[IND]) + \
+        operation
 
 
 def get_experiment_id(exp_conf):
@@ -287,7 +296,10 @@ def gen_query(exp_conf):
     filename = QUERIES_DIR + os.sep + query_id + '.cql'
     rules_list = gen_rules(exp_conf)
     pref = '\nAND\n'.join(rules_list)
-    query = QUERY.format(p=pref)
+    topk = ''
+    if exp_conf[TOPK] != -1:
+        topk = 'TOPK(' + str(exp_conf[TOPK]) + ')'
+    query = QUERY.format(t=topk, p=pref)
     out_file = open(filename, 'w')
     out_file.write(query)
     out_file.close()
@@ -337,7 +349,8 @@ def gen_experiment_list():  # IGNORE:too-many-statements
     # Default parameters
     def_rec = {ATT: ATTRIBUTE_DEFAULT, TUP: TUPLE_DEFAULT,
                DEL: DELETION_DEFAULT, INS: INSERTION_DEFAULT,
-               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT}
+               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT,
+               TOPK: TOPK_DEFAULT}
     # Attributes number variation (no deletions)
     for att_number in ATTRIBUTE_LIST:
         rec = def_rec.copy()
@@ -403,6 +416,17 @@ def gen_experiment_list():  # IGNORE:too-many-statements
     for indif_number in INDIFF_LIST:
         rec = def_rec.copy()
         rec[IND] = indif_number
+        add_experiment(exp_list, rec)
+        rec[DEL] = 0
+        add_experiment(exp_list, rec)
+        rec[DEL] = DELETION_DEFAULT
+        rec[INS] = 0
+        add_experiment(exp_list, rec)
+
+    # indifferent attributes variation
+    for topk_number in TOPK_LIST:
+        rec = def_rec.copy()
+        rec[TOPK] = topk_number
         add_experiment(exp_list, rec)
         rec[DEL] = 0
         add_experiment(exp_list, rec)
@@ -567,7 +591,8 @@ def summarize_iterations():
     '''
     exp_rec = {ATT: ATTRIBUTE_DEFAULT, TUP: TUPLE_DEFAULT,
                DEL: DELETION_DEFAULT, INS: INSERTION_DEFAULT,
-               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT}
+               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT,
+               TOPK: TOPK_DEFAULT}
     time_list = []
     mem_list = []
     for rcount in range(RUN_COUNT):
@@ -601,29 +626,34 @@ def summarize_all():
     exp[RUL] = RULES_LIST
     exp[LEV] = LEVEL_LIST
     exp[IND] = INDIFF_LIST
+    exp[TOPK] = TOPK_LIST
     def_rec = {ATT: ATTRIBUTE_DEFAULT, TUP: TUPLE_DEFAULT,
                DEL: DELETION_DEFAULT, INS: INSERTION_DEFAULT,
-               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT}
+               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT,
+               TOPK: TOPK_DEFAULT}
     # Insertions and deletions
     for key in exp:
         summarize_details(key, exp[key], def_rec)
     # No deletions
     def_rec = {ATT: ATTRIBUTE_DEFAULT, TUP: TUPLE_DEFAULT,
                DEL: 0, INS: INSERTION_DEFAULT,
-               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT}
+               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT,
+               TOPK: TOPK_DEFAULT}
     for key in exp:
         summarize_details(key, exp[key], def_rec)
     # No insertions
     def_rec = {ATT: ATTRIBUTE_DEFAULT, TUP: TUPLE_DEFAULT,
                DEL: DELETION_DEFAULT, INS: 0,
-               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT}
+               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT,
+               TOPK: TOPK_DEFAULT}
     for key in exp:
         if key != INS:
             summarize_details(key, exp[key], def_rec)
     # Deletions (with maximum number of tuples)
     def_rec = {ATT: ATTRIBUTE_DEFAULT, TUP: TUPLE_MAX,
                DEL: DELETION_DEFAULT, INS: INSERTION_DEFAULT,
-               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT}
+               RUL: RULES_DEFAULT, LEV: LEVEL_DEFAULT, IND: INDIFF_DEFAULT,
+               TOPK: TOPK_DEFAULT}
     summarize_details(DEL, DELETION_LIST, def_rec)
     def_rec[INS] = 0
     summarize_details(DEL, DELETION_LIST, def_rec)
@@ -650,7 +680,7 @@ def confidence_interval_all():
     Calculate confidence interval for all results
     '''
     # Deletions and insertions
-    key_list = [ATT, TUP, DEL, INS, RUL, LEV, IND]
+    key_list = [ATT, TUP, DEL, INS, RUL, LEV, IND, TOPK]
     for key in key_list:
         in_file = RUNTIME_SUMMARY_DIR + os.sep + key + '.csv'
         out_file = RUNTIME_RESULT_DIR + os.sep + key + '.csv'
@@ -659,7 +689,7 @@ def confidence_interval_all():
         out_file = MEMORY_RESULT_DIR + os.sep + key + '.csv'
         confidence_interval(key, in_file, out_file)
     # No deletions
-    key_list = [ATT, TUP, INS, RUL, LEV, IND]
+    key_list = [ATT, TUP, INS, RUL, LEV, IND, TOPK]
     for key in key_list:
         in_file = RUNTIME_SUMMARY_DIR + os.sep + key + '_no_del.csv'
         out_file = RUNTIME_RESULT_DIR + os.sep + key + '_no_del.csv'
@@ -668,7 +698,7 @@ def confidence_interval_all():
         out_file = MEMORY_RESULT_DIR + os.sep + key + '_no_del.csv'
         confidence_interval(key, in_file, out_file)
     # No insertions
-    key_list = [ATT, TUP, DEL, RUL, LEV, IND]
+    key_list = [ATT, TUP, DEL, RUL, LEV, IND, TOPK]
     for key in key_list:
         in_file = RUNTIME_SUMMARY_DIR + os.sep + key + '_no_ins.csv'
         out_file = RUNTIME_RESULT_DIR + os.sep + key + '_no_ins.csv'
@@ -722,11 +752,8 @@ def get_arguments(print_help=False):
                         help='Run experiments')
     parser.add_argument('-s', '--summarize', action="store_true",
                         default=False,
-                        help='Summarize results')
-    parser.add_argument('-c', '--confinterval', action="store_true",
-                        default=False,
-                        help='Calculate confidence interval over results')
-
+                        help='Summarize results and calculate' +
+                        'confidence interval')
     args = parser.parse_args()
     if print_help:
         parser.print_help()
@@ -747,19 +774,16 @@ def main():
         gen_all_queries(exp_list)
         print 'Generating environments'
         gen_all_env_files(exp_list)
-        exit(0)
-    if args.run:
+    elif args.run:
         print 'Running experiments'
         run_experiments(exp_list)
-        exit(0)
-    if args.summarize:
+    elif args.summarize:
         print 'Summarizing results'
         summarize_all()
-    if args.confinterval:
         print 'Calculating confidence intervals'
         confidence_interval_all()
-        exit(0)
-    get_arguments(True)
+    else:
+        get_arguments(True)
 
 
 if __name__ == '__main__':
