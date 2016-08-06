@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python -u
 # -*- coding: utf-8 -*-
 '''
 Module to generate experiments for BEST operator (incremental algorithms)
