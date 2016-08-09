@@ -752,8 +752,7 @@ def get_arguments(print_help=False):
                         help='Run experiments')
     parser.add_argument('-s', '--summarize', action="store_true",
                         default=False,
-                        help='Summarize results and calculate' +
-                        'confidence interval')
+                        help='Summarize results')
     args = parser.parse_args()
     if print_help:
         parser.print_help()
