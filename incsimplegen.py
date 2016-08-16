@@ -1,7 +1,8 @@
 #!/usr/bin/python -u
 # -*- coding: utf-8 -*-
 '''
-Module to generate experiments for BEST operator (incremental algorithms)
+Module to generate synthetic data and environments for
+experiments with preference queries (simple preferences)
 '''
 
 import csv
@@ -88,7 +89,7 @@ ACCORDING TO PREFERENCES
 {p};'''
 
 # Directories
-MAIN_DIR = 'pref'
+MAIN_DIR = 'streampref'
 DETAILS_DIR = MAIN_DIR + os.sep + 'details'
 RUNTIME_SUMMARY_DIR = MAIN_DIR + os.sep + 'runtime_summary'
 MEMORY_SUMMARY_DIR = MAIN_DIR + os.sep + 'memory_summary'
@@ -97,6 +98,11 @@ MEMORY_RESULT_DIR = MAIN_DIR + os.sep + 'memory_result'
 QUERIES_DIR = MAIN_DIR + os.sep + 'queries'
 DATA_DIR = MAIN_DIR + os.sep + 'data'
 ENV_DIR = MAIN_DIR + os.sep + 'env'
+
+# Directory list
+DIR_LIST = [MAIN_DIR, DETAILS_DIR, RUNTIME_SUMMARY_DIR, MEMORY_SUMMARY_DIR,
+            RUNTIME_RESULT_DIR, MEMORY_RESULT_DIR, QUERIES_DIR, DATA_DIR,
+            ENV_DIR]
 
 # Command for experiment run
 RUN_COMMAND = \
@@ -335,7 +341,7 @@ def gen_env_file(exp_conf):
 
 def add_experiment(experiment_list, experiment):
     '''
-    Add an experimento into experiment list
+    Add an experiment into experiment list
     '''
     if experiment not in experiment_list:
         experiment_list.append(experiment.copy())
@@ -448,24 +454,9 @@ def create_directories():
     '''
     Create directories
     '''
-    if not os.path.exists(MAIN_DIR):
-        os.mkdir(MAIN_DIR)
-    if not os.path.exists(DETAILS_DIR):
-        os.mkdir(DETAILS_DIR)
-    if not os.path.exists(RUNTIME_SUMMARY_DIR):
-        os.mkdir(RUNTIME_SUMMARY_DIR)
-    if not os.path.exists(MEMORY_SUMMARY_DIR):
-        os.mkdir(MEMORY_SUMMARY_DIR)
-    if not os.path.exists(RUNTIME_RESULT_DIR):
-        os.mkdir(RUNTIME_RESULT_DIR)
-    if not os.path.exists(MEMORY_RESULT_DIR):
-        os.mkdir(MEMORY_RESULT_DIR)
-    if not os.path.exists(QUERIES_DIR):
-        os.mkdir(QUERIES_DIR)
-    if not os.path.exists(DATA_DIR):
-        os.mkdir(DATA_DIR)
-    if not os.path.exists(ENV_DIR):
-        os.mkdir(ENV_DIR)
+    for directory in DIR_LIST:
+        if not os.path.exists(directory):
+            os.mkdir(directory)
 
 
 def get_detail_file(algorithm, experiment_id, count):
